@@ -41,13 +41,12 @@ static uint64_t calc_index(char *key, uint64_t capacity)
 static struct map_entry *create_map_set(uint64_t capacity)
 {
 	struct map_entry *set;
-	uint64_t i;
 
 	set = malloc(sizeof(struct map_entry) * capacity);
 	if (!set) {
 		return NULL;
 	}
-	for (i = 0; i < capacity; i++) {
+	for (uint64_t i = 0; i < capacity; i++) {
 		set[i].key = NULL;
 		set[i].value = NULL;
 	}
@@ -78,14 +77,13 @@ static void expand_map_set(struct map_entry **set, uint64_t *capacity)
 {
 	struct map_entry *new_set;
 	uint64_t new_cap;
-	uint64_t i;
 
 	new_cap = (*capacity) * 2;
 	new_set = create_map_set(new_cap);
 	if (!new_set) {
 		return;
 	}
-	for (i = 0; i < (*capacity); i++) {
+	for (uint64_t i = 0; i < (*capacity); i++) {
 		if ((*set)[i].key == NULL) {
 			continue;
 		}
@@ -117,9 +115,7 @@ struct hash_map *hash_map_create(void)
 
 void hash_map_destroy(struct hash_map *map)
 {
-	uint64_t i;
-
-	for (i = 0; i < map->capacity; i++) {
+	for (uint64_t i = 0; i < map->capacity; i++) {
 		free(map->set[i].key);
 	}
 	free(map->set);
