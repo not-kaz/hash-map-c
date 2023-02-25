@@ -20,6 +20,19 @@ struct hash_map {
 	uint64_t capacity;
 };
 
+static char *str_duplicate(const char *str)
+{
+	size_t len;
+	void *new;
+
+	len = strlen(str) + 1;
+	new = malloc(len);
+	if (!new) {
+		return NULL;
+	}
+	return memcpy(new, str, len);
+}
+
 static uint64_t hash(char *key)
 {
 	uint64_t hash;
@@ -130,7 +143,7 @@ void hash_map_insert(struct hash_map *map, char *key, void *value)
 	if ((float) map->length / (float) map->capacity >= LOAD_FACTOR) {
 		expand_map_set(&map->set, &map->capacity);
 	}
-	key = strdup(key);
+	key = str_duplicate(key);
 	if (!key) {
 		return;
 	}
