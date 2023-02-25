@@ -3,11 +3,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define FNV_PRIME  0x00000100000001B3
 #define FNV_OFFSET 0xcbf29ce484222325
+#define FNV_PRIME 0x00000100000001B3
 
 #define INITIAL_CAPACITY 8
-#define LOAD_FACTOR	 0.75f
+#define LOAD_FACTOR 0.75f
 
 struct map_entry {
 	char *key;
@@ -36,10 +36,9 @@ static char *str_duplicate(const char *str)
 static uint64_t hash(char *key)
 {
 	uint64_t hash;
-	char *ch;
 
 	hash = FNV_OFFSET;
-	for (ch = key; *ch; ch++) {
+	for (char *ch = key; *ch; ch++) {
 		hash ^= (uint8_t) (*ch);
 		hash *= FNV_PRIME;
 	}
