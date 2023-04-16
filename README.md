@@ -13,7 +13,7 @@ int main(void)
 	struct hash_map *map;
 
 	map = hash_map_create();
-	hash_map_insert(map, "passcode", (void *) 42069);
+	hash_map_insert(map, "passcode", (void *)(intptr_t)(12345));
 	hash_map_destroy(map);
 	return 0;
 }
