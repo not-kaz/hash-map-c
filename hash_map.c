@@ -5,8 +5,7 @@
 
 #define FNV_OFFSET 0xcbf29ce484222325
 #define FNV_PRIME 0x00000100000001B3
-
-#define INITIAL_CAPACITY 8
+#define INITIAL_CAPACITY 32
 #define LOAD_FACTOR 0.75f
 
 struct map_entry {
