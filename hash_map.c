@@ -19,6 +19,11 @@ struct hash_map {
 	uint64_t capacity;
 };
 
+struct hash_map_iter {
+	struct hash_map *map;
+	uint64_t index;
+};
+
 static char *str_duplicate(const char *str)
 {
 	size_t len;
@@ -38,7 +43,7 @@ static uint64_t hash(char *key)
 
 	hash = FNV_OFFSET;
 	for (char *ch = key; *ch; ch++) {
-		hash ^= (uint8_t) (*ch);
+		hash ^= (uint8_t)(*ch);
 		hash *= FNV_PRIME;
 	}
 	return hash;
@@ -46,7 +51,7 @@ static uint64_t hash(char *key)
 
 static uint64_t calc_index(char *key, uint64_t capacity)
 {
-	return (uint64_t) (hash(key) & (capacity - 1));
+	return (uint64_t)(hash(key) & (capacity - 1));
 }
 
 static struct map_entry *create_map_set(uint64_t capacity)
@@ -65,7 +70,7 @@ static struct map_entry *create_map_set(uint64_t capacity)
 }
 
 static void set_map_entry(struct map_entry *set, uint64_t capacity, char *key,
-	void *value)
+		void *value)
 {
 	uint64_t index;
 
@@ -98,8 +103,8 @@ static void expand_map_set(struct map_entry **set, uint64_t *capacity)
 		if ((*set)[i].key == NULL) {
 			continue;
 		}
-		set_map_entry(new_set, new_cap,
-			(*set)[i].key, (*set)[i].value);
+		set_map_entry(new_set, new_cap, (*set)[i].key, 
+			(*set)[i].value);
 	}
 	free((*set));
 	(*set) = new_set;
@@ -135,10 +140,10 @@ void hash_map_destroy(struct hash_map *map)
 
 void hash_map_insert(struct hash_map *map, char *key, void *value)
 {
-	if (!map || !key || !value) {
+	if (!map || !key) {
 		return;
 	}
-	if ((float) map->length / (float) map->capacity >= LOAD_FACTOR) {
+	if ((float)(map->length) / (float)(map->capacity) >= LOAD_FACTOR) {
 		expand_map_set(&map->set, &map->capacity);
 	}
 	key = str_duplicate(key);
@@ -149,21 +154,22 @@ void hash_map_insert(struct hash_map *map, char *key, void *value)
 	map->length++;
 }
 
-void *hash_map_at(struct hash_map *map, char *key)
+int hash_map_at(struct hash_map *map, char *key, void **value)
 {
 	uint64_t index;
 
 	index = calc_index(key, map->capacity);
 	while (map->set[index].key != NULL) {
 		if (strcmp(key, map->set[index].key) == 0) {
-			return map->set[index].value;
+			(*value) = map->set[index].value;
+			return 1;
 		}
 		index++;
 		if (index >= map->capacity) {
 			index = 0;
 		}
 	}
-	return NULL;
+	return 0;
 }
 
 uint64_t hash_map_length(struct hash_map *map)
