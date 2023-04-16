@@ -181,3 +181,35 @@ uint64_t hash_map_capacity(struct hash_map *map)
 {
 	return map->capacity;
 }
+
+struct hash_map_iter *hash_map_iter_create(struct hash_map *map)
+{
+	struct hash_map_iter *iter;
+
+	iter = malloc(sizeof(struct hash_map_iter));
+	if (!iter) {
+		return NULL;
+	}
+	iter->map = map;
+	iter->index = 0;
+	return iter;
+}
+
+void hash_map_iter_destroy(struct hash_map_iter *iter)
+{
+	free(iter);
+}
+
+int hash_map_iter_next(struct hash_map_iter *iter, char **key, void **value)
+{
+	while (iter->index < iter->map->capacity) {
+		if (iter->map->set[iter->index].key != NULL) {
+			*key = iter->map->set[iter->index].key;
+			*value = iter->map->set[iter->index].value;
+			iter->index++;
+			return 1;
+		}
+		iter->index++;
+	}
+	return 0;
+}
