@@ -4,7 +4,7 @@
 #include <string.h>
 
 #define FNV_OFFSET 0xcbf29ce484222325
-#define FNV_PRIME 0x00000100000001B3
+#define FNV_PRIME 0x00000100000001b3
 #define INITIAL_CAPACITY 32
 #define LOAD_FACTOR 0.75f
 
