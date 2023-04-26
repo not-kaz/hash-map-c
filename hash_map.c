@@ -78,6 +78,7 @@ static void set_map_entry(struct map_entry *set, uint64_t capacity, char *key,
 	while (set[index].key != NULL) {
 		if (strcmp(set[index].key, key) == 0) {
 			set[index].val = val;
+			free(key);
 			return;
 		}
 		index++;
