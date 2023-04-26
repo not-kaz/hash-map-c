@@ -10,7 +10,7 @@
 
 struct map_entry {
 	char *key;
-	void *value;
+	void *val;
 };
 
 struct hash_map {
@@ -64,20 +64,20 @@ static struct map_entry *create_map_set(uint64_t capacity)
 	}
 	for (uint64_t i = 0; i < capacity; i++) {
 		set[i].key = NULL;
-		set[i].value = NULL;
+		set[i].val = NULL;
 	}
 	return set;
 }
 
 static void set_map_entry(struct map_entry *set, uint64_t capacity, char *key,
-		void *value)
+		void *val)
 {
 	uint64_t index;
 
 	index = calc_index(key, capacity);
 	while (set[index].key != NULL) {
 		if (strcmp(set[index].key, key) == 0) {
-			set[index].value = value;
+			set[index].val = val;
 			return;
 		}
 		index++;
@@ -86,7 +86,7 @@ static void set_map_entry(struct map_entry *set, uint64_t capacity, char *key,
 		}
 	}
 	set[index].key = key;
-	set[index].value = value;
+	set[index].val = val;
 }
 
 static void expand_map_set(struct map_entry **set, uint64_t *capacity)
@@ -103,8 +103,7 @@ static void expand_map_set(struct map_entry **set, uint64_t *capacity)
 		if ((*set)[i].key == NULL) {
 			continue;
 		}
-		set_map_entry(new_set, new_cap, (*set)[i].key, 
-			(*set)[i].value);
+		set_map_entry(new_set, new_cap, (*set)[i].key, (*set)[i].val);
 	}
 	free((*set));
 	(*set) = new_set;
@@ -138,7 +137,7 @@ void hash_map_destroy(struct hash_map *map)
 	free(map);
 }
 
-void hash_map_insert(struct hash_map *map, char *key, void *value)
+void hash_map_insert(struct hash_map *map, char *key, void *val)
 {
 	if (!map || !key) {
 		return;
@@ -150,18 +149,18 @@ void hash_map_insert(struct hash_map *map, char *key, void *value)
 	if (!key) {
 		return;
 	}
-	set_map_entry(map->set, map->capacity, key, value);
+	set_map_entry(map->set, map->capacity, key, val);
 	map->length++;
 }
 
-int hash_map_at(struct hash_map *map, char *key, void **value)
+int hash_map_at(struct hash_map *map, char *key, void **val)
 {
 	uint64_t index;
 
 	index = calc_index(key, map->capacity);
 	while (map->set[index].key != NULL) {
 		if (strcmp(key, map->set[index].key) == 0) {
-			(*value) = map->set[index].value;
+			(*val) = map->set[index].val;
 			return 1;
 		}
 		index++;
@@ -200,12 +199,12 @@ void hash_map_iter_destroy(struct hash_map_iter *iter)
 	free(iter);
 }
 
-int hash_map_iter_next(struct hash_map_iter *iter, char **key, void **value)
+int hash_map_iter_next(struct hash_map_iter *iter, char **key, void **val)
 {
 	while (iter->index < iter->map->capacity) {
 		if (iter->map->set[iter->index].key != NULL) {
 			*key = iter->map->set[iter->index].key;
-			*value = iter->map->set[iter->index].value;
+			*val = iter->map->set[iter->index].val;
 			iter->index++;
 			return 1;
 		}
