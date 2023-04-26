@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 #define HASH_MAP_FOR_EACH(iter, key, val) \
-	for (; hash_map_iter_next(iter, &(key), &(val); ) \
+	for (; hash_map_iter_next(iter, &(key), &(val)); ) \
 
 struct hash_map *hash_map_create(void);
 void hash_map_destroy(struct hash_map *map);
