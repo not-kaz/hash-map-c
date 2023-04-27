@@ -78,13 +78,16 @@ static void set_map_entry(struct map_entry *set, uint64_t capacity, char *key,
 	while (set[index].key != NULL) {
 		if (strcmp(set[index].key, key) == 0) {
 			set[index].val = val;
-			free(key);
 			return;
 		}
 		index++;
 		if (index >= capacity) {
 			index = 0;
 		}
+	}
+	key = str_duplicate(key);
+	if (!key) {
+		return;
 	}
 	set[index].key = key;
 	set[index].val = val;
@@ -145,11 +148,6 @@ void hash_map_insert(struct hash_map *map, char *key, void *val)
 	}
 	if ((float)(map->length) / (float)(map->capacity) >= LOAD_FACTOR) {
 		expand_map_set(&map->set, &map->capacity);
-	}
-	/* TODO: Find a way to avoid excessive memory allocation. */
-	key = str_duplicate(key);
-	if (!key) {
-		return;
 	}
 	set_map_entry(map->set, map->capacity, key, val);
 	map->length++;
