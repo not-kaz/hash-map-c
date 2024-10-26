@@ -125,20 +125,14 @@ void hash_map_finish(struct hash_map *map)
 		map->alloc_desc.dealloc_cb(map->set,
 			map->alloc_desc.allocator_ctx);
 	}
-	/* NOTE: Since we do not explicitly allocate the map, we don't need *
-	 * to free it. */
 }
 
 void hash_map_insert(struct hash_map *map, char *key, void *value)
 {
-	if (!map || !key) {
+	if (!map || !key || !map->set) {
 		return;
 	}
-	if (!map->set) {
-		return;
-	}
-	/* TODO: Decide whether to use parentheses around casted variables. */
-	if ((float)(map->length) / (float)(map->capacity) >= LOAD_FACTOR) {
+	if ((float)(map->size) / (float)(map->capacity) >= LOAD_FACTOR) {
 		struct hash_map_entry *new_set;
 		size_t new_cap;
 
@@ -160,14 +154,16 @@ void hash_map_insert(struct hash_map *map, char *key, void *value)
 		map->capacity = new_cap;
 	}
 	set_map_entry(map->set, map->capacity, key, value, &map->alloc_desc);
-	map->length++;
+	map->size++;
 }
 
 int hash_map_at(const struct hash_map *map, char *key, void **value)
 {
 	uint64_t index;
 
-	/* TODO: Check if this function requires refactoring. */
+	if (!map || !map->set) {
+		return 0;
+	}
 	index = calc_index(key, map->capacity);
 	while (map->set[index].key != NULL) {
 		if (strcmp(key, map->set[index].key) == 0) {
@@ -182,9 +178,9 @@ int hash_map_at(const struct hash_map *map, char *key, void **value)
 	return 0;
 }
 
-size_t hash_map_length(const struct hash_map *map)
+size_t hash_map_size(const struct hash_map *map)
 {
-	return map ? map->length : 0;
+	return map ? map->size : 0;
 }
 
 size_t hash_map_capacity(const struct hash_map *map)
