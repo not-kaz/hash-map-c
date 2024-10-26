@@ -6,7 +6,7 @@
 #define HASH_MAP_INSERT(map, key, value) \
 	hash_map_insert(map, key, (void *)(value))
 #define HASH_MAP_AT(map, key, value) hash_map_at(map, key, (void *)&(value))
-#define HASH_MAP_FOR_EACH(iter, key, value) \
+#define HASH_MAP_ITER_FOR_EACH(iter, key, value) \
 	for (; hash_map_iter_next(iter, &(key), (void **)&(value)); )
 /* NOTE: Address-of operators in macro might lead to unexpected behaviour. */
 
