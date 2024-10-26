@@ -5,7 +5,7 @@ Made as an exercise and for personal use in hobby projects.
 Collisions are handled with linear probing, for the sake of simplicity and locality(?).</br>
 No removal implemented, yet to be decided if it's necessary.
 
-```
+```c
 #include "hash_map.h"
 
 int main(void)
