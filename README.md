@@ -36,3 +36,4 @@ int main(void)
 	return 0;
 }
 ```
+TODO: Actually store value data into the hash_map, not just pointers to the data.
