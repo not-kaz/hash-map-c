@@ -208,6 +208,11 @@ void hash_map_iter_finish(struct hash_map_iter *iter)
 
 int hash_map_iter_next(struct hash_map_iter *iter, char **key, void **value)
 {
+	/* NOTE: This function should NOT be used explicitly, it is intended as
+	 * an internal function for macros. */
+	if (!iter || !key || !value) {
+		return 0;
+	}
 	while (iter->index < iter->map->capacity) {
 		if (iter->map->set[iter->index].key != NULL) {
 			*key = iter->map->set[iter->index].key;
