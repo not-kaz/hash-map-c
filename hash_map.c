@@ -1,40 +1,29 @@
-#include "hash_map.h"
-
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include "hash_map.h"
 
 #define FNV_OFFSET 0xcbf29ce484222325
 #define FNV_PRIME 0x00000100000001b3
 #define INITIAL_CAPACITY 32
 #define LOAD_FACTOR 0.75f
 
-struct map_entry {
-	char *key;
-	void *val;
-};
-
-struct hash_map {
-	struct map_entry *set;
-	uint64_t length;
-	uint64_t capacity;
-};
-
-struct hash_map_iter {
-	struct hash_map *map;
-	uint64_t index;
-};
-
-static char *str_duplicate(const char *str)
+static void *malloc_and_discard_ctx(size_t size, void *ctx)
 {
-	size_t len;
-	void *new;
+	(void)(ctx);
+	return malloc(size);
+}
 
-	len = strlen(str) + 1;
-	new = malloc(len);
-	if (!new) {
-		return NULL;
-	}
-	return memcpy(new, str, len);
+static void *realloc_and_discard_ctx(void *ptr, size_t size, void *ctx)
+{
+	(void)(ctx);
+	return realloc(ptr, size);
+}
+
+static void free_and_discard_ctx(void *ptr, void *ctx)
+{
+	(void)(ctx);
+	free(ptr);
 }
 
 static uint64_t hash(char *key)
@@ -54,30 +43,33 @@ static uint64_t calc_index(char *key, uint64_t capacity)
 	return (uint64_t)(hash(key) & (capacity - 1));
 }
 
-static struct map_entry *create_map_set(uint64_t capacity)
+static struct hash_map_entry *init_map_set(const size_t capacity, struct
+	hash_map_alloc_desc *alloc_desc)
 {
-	struct map_entry *set;
+	struct hash_map_entry *set = NULL;
 
-	set = malloc(sizeof(struct map_entry) * capacity);
-	if (!set) {
-		return NULL;
-	}
-	for (uint64_t i = 0; i < capacity; i++) {
-		set[i].key = NULL;
-		set[i].val = NULL;
+	/* NOTE: Caller functions should have done null checking beforehand. */
+	set = alloc_desc->alloc_cb(sizeof(struct hash_map_entry)
+		* capacity, alloc_desc->allocator_ctx);
+	if (set) {
+		memset(set, 0, sizeof(struct hash_map_entry) * capacity);
 	}
 	return set;
 }
 
-static void set_map_entry(struct map_entry *set, uint64_t capacity, char *key,
-		void *val)
+static void set_map_entry(struct hash_map_entry *set, const size_t capacity,
+	char *key, void *value, const struct hash_map_alloc_desc *alloc_desc)
 {
 	uint64_t index;
+	size_t len;
+	char *str;
 
+	/* NOTE: We expect a valid null-terminated key, which should have been *
+	 * verified by the caller function. */
 	index = calc_index(key, capacity);
 	while (set[index].key != NULL) {
 		if (strcmp(set[index].key, key) == 0) {
-			set[index].val = val;
+			set[index].value = value;
 			return;
 		}
 		index++;
@@ -85,82 +77,101 @@ static void set_map_entry(struct map_entry *set, uint64_t capacity, char *key,
 			index = 0;
 		}
 	}
-	key = str_duplicate(key);
-	if (!key) {
+	len = strlen(key) + 1;
+	str = (char *)(alloc_desc->alloc_cb(len, alloc_desc->allocator_ctx));
+	if (!str) {
 		return;
 	}
-	set[index].key = key;
-	set[index].val = val;
+	set[index].key = memcpy(str, key, len);
+	set[index].value = value;
 }
 
-static void expand_map_set(struct map_entry **set, uint64_t *capacity)
+void hash_map_init(struct hash_map *map,
+	const struct hash_map_alloc_desc *alloc_desc)
 {
-	struct map_entry *new_set;
-	uint64_t new_cap;
-
-	new_cap = (*capacity) * 2;
-	new_set = create_map_set(new_cap);
-	if (!new_set) {
-		return;
-	}
-	for (uint64_t i = 0; i < (*capacity); i++) {
-		if ((*set)[i].key == NULL) {
-			continue;
-		}
-		set_map_entry(new_set, new_cap, (*set)[i].key, (*set)[i].val);
-	}
-	free((*set));
-	(*set) = new_set;
-	(*capacity) = new_cap;
-}
-
-struct hash_map *hash_map_create(void)
-{
-	struct hash_map *map;
-
-	map = malloc(sizeof(struct hash_map));
 	if (!map) {
-		return NULL;
+		return;
 	}
-	map->set = create_map_set(INITIAL_CAPACITY);
+	memset(map, 0, sizeof(struct hash_map));
+	if (alloc_desc) {
+		/* TODO: Verify 'alloc_desc' values. If invalid, provide *
+		 * alternatives per callback. */
+		map->alloc_desc = *alloc_desc;
+	} else {
+		map->alloc_desc.alloc_cb = malloc_and_discard_ctx;
+		map->alloc_desc.realloc_cb = realloc_and_discard_ctx;
+		map->alloc_desc.dealloc_cb = free_and_discard_ctx;
+		map->alloc_desc.allocator_ctx = NULL;
+	}
+	map->set = init_map_set(INITIAL_CAPACITY, &map->alloc_desc);
 	if (!map->set) {
-		free(map);
-		return NULL;
+		return;
 	}
-	map->length = 0;
 	map->capacity = INITIAL_CAPACITY;
-	return map;
 }
 
-void hash_map_destroy(struct hash_map *map)
+void hash_map_finish(struct hash_map *map)
 {
-	for (uint64_t i = 0; i < map->capacity; i++) {
-		free(map->set[i].key);
+	if (!map) {
+		return;
 	}
-	free(map->set);
-	free(map);
+	if (map->set) {
+		for (size_t i = 0; i < map->capacity; i++) {
+			if (map->set[i].key) {
+				map->alloc_desc.dealloc_cb(map->set[i].key,
+					map->alloc_desc.allocator_ctx);
+			}
+		}
+		map->alloc_desc.dealloc_cb(map->set,
+			map->alloc_desc.allocator_ctx);
+	}
+	/* NOTE: Since we do not explicitly allocate the map, we don't need *
+	 * to free it. */
 }
 
-void hash_map_insert(struct hash_map *map, char *key, void *val)
+void hash_map_insert(struct hash_map *map, char *key, void *value)
 {
 	if (!map || !key) {
 		return;
 	}
-	if ((float)(map->length) / (float)(map->capacity) >= LOAD_FACTOR) {
-		expand_map_set(&map->set, &map->capacity);
+	if (!map->set) {
+		return;
 	}
-	set_map_entry(map->set, map->capacity, key, val);
+	/* TODO: Decide whether to use parentheses around casted variables. */
+	if ((float)(map->length) / (float)(map->capacity) >= LOAD_FACTOR) {
+		struct hash_map_entry *new_set;
+		size_t new_cap;
+
+		new_cap = (map->capacity) * 2;
+		new_set = init_map_set(new_cap, &map->alloc_desc);
+		if (!new_set) {
+			return;
+		}
+		for (size_t i = 0; i < map->capacity; i++) {
+			if (map->set[i].key == NULL) {
+				continue;
+			}
+			set_map_entry(new_set, new_cap, map->set[i].key,
+				map->set[i].value, &map->alloc_desc);
+		}
+		map->alloc_desc.dealloc_cb(map->set,
+			map->alloc_desc.allocator_ctx);
+		map->set = new_set;
+		map->capacity = new_cap;
+	}
+	set_map_entry(map->set, map->capacity, key, value, &map->alloc_desc);
 	map->length++;
 }
 
-int hash_map_at(struct hash_map *map, char *key, void **val)
+int hash_map_at(const struct hash_map *map, char *key, void **value)
 {
 	uint64_t index;
 
+	/* TODO: Check if this function requires refactoring. */
 	index = calc_index(key, map->capacity);
 	while (map->set[index].key != NULL) {
 		if (strcmp(key, map->set[index].key) == 0) {
-			(*val) = map->set[index].val;
+			(*value) = map->set[index].value;
 			return 1;
 		}
 		index++;
@@ -171,40 +182,40 @@ int hash_map_at(struct hash_map *map, char *key, void **val)
 	return 0;
 }
 
-uint64_t hash_map_length(struct hash_map *map)
+size_t hash_map_length(const struct hash_map *map)
 {
-	return map->length;
+	return map ? map->length : 0;
 }
 
-uint64_t hash_map_capacity(struct hash_map *map)
+size_t hash_map_capacity(const struct hash_map *map)
 {
-	return map->capacity;
+	return map ? map->capacity : 0;
 }
 
-struct hash_map_iter *hash_map_iter_create(struct hash_map *map)
+void hash_map_iter_init(struct hash_map_iter *iter, struct hash_map *map)
 {
-	struct hash_map_iter *iter;
-
-	iter = malloc(sizeof(struct hash_map_iter));
 	if (!iter) {
-		return NULL;
+		return;
 	}
-	iter->map = map;
-	iter->index = 0;
-	return iter;
+	memset(iter, 0, sizeof(struct hash_map_iter));
+	if (map) {
+		iter->map = map;
+	}
 }
 
-void hash_map_iter_destroy(struct hash_map_iter *iter)
+void hash_map_iter_finish(struct hash_map_iter *iter)
 {
-	free(iter);
+	if (iter) {
+		memset(iter, 0, sizeof(struct hash_map_iter));
+	}
 }
 
-int hash_map_iter_next(struct hash_map_iter *iter, char **key, void **val)
+int hash_map_iter_next(struct hash_map_iter *iter, char **key, void **value)
 {
 	while (iter->index < iter->map->capacity) {
 		if (iter->map->set[iter->index].key != NULL) {
 			*key = iter->map->set[iter->index].key;
-			*val = iter->map->set[iter->index].val;
+			*value = iter->map->set[iter->index].value;
 			iter->index++;
 			return 1;
 		}
