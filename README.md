@@ -3,18 +3,36 @@ Naive and portable implementation of a hash map written in ANSI C99, using the F
 Made as an exercise and for personal use in hobby projects.
 
 Collisions are handled with linear probing, for the sake of simplicity and locality(?).</br>
-No removal implemented yet, will see if it's necessary.
+No removal implemented, yet to be decided if it's necessary.
 
 ```
 #include "hash_map.h"
 
 int main(void)
 {
-	struct hash_map *map;
+	/* Hash map structs */
+	struct hash_map map;
+	struct hash_map_iter iter;
+	/* Data variables */
+	int passcode;
+	int age;
+	/* Pointers for data access */
+	char *key;
+	int *value;
 
-	map = hash_map_create();
-	hash_map_insert(map, "passcode", (void *)(intptr_t)(12345));
-	hash_map_destroy(map);
+	passcode = 2928;
+	age = 76;
+	/* If we do not provide an allocator descriptor, the map will use the standard library. */
+	hash_map_init(&map, NULL);
+	hash_map_iter_init(&iter, &map);
+	hash_map_insert(&map, "passcode", &passcode);
+	hash_map_insert(&map, "age", &age);
+	HASH_MAP_ITER_FOR_EACH(&iter, key, value) {
+		printf("%s : %d\n", key, (*value));
+	}
+	HASH_MAP_AT(&map, "passcode", value);
+	hash_map_iter_finish(&iter);
+	hash_map_finish(&map);
 	return 0;
 }
 ```
