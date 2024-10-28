@@ -19,11 +19,12 @@ enum hash_map_key_type {
 	HASH_MAP_KEY_TYPE_DOUBLE_LONG,
 	HASH_MAP_KEY_TYPE_CHAR,
 	HASH_MAP_KEY_TYPE_STRING,
-	HASH_MAP_KEY_TYPE_PTR
+	HASH_MAP_KEY_TYPE_PTR,
+	HASH_MAP_KEY_TYPE_CUSTOM
 };
 
 struct hash_map_trait_desc {
-	int (*compare)(void *, void *, size_t);
+	int (*compare)(const void *, const void *, size_t);
 	unsigned long long (*hash)(void *);
 };
 
@@ -31,13 +32,13 @@ struct hash_map_alloc_desc {
 	void *(*malloc_cb)(size_t);
 	void (*free_cb)(void *);
 	void *(*alloc_ctx_cb)(void *, size_t);
-	void (*dealloc_ctx_cb)(void *);
+	void (*dealloc_ctx_cb)(void *, void *);
 	void *ctx;
 };
 
 struct hash_map_entry {
-	const void *key;
-	const void *value;
+	void *key;
+	void *value;
 };
 
 struct hash_map {

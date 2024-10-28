@@ -17,7 +17,7 @@
 
 /* TODO: Change cast style from '(type)(variable)' to '(type) variable'. */
 
-static void *alloc_w_desc(struct hash_map_alloc_desc *alloc_desc,
+static void *alloc_w_desc(const struct hash_map_alloc_desc *alloc_desc,
 	size_t size)
 {
 	void *buf =  NULL;
@@ -32,17 +32,17 @@ static void *alloc_w_desc(struct hash_map_alloc_desc *alloc_desc,
 	return buf;
 }
 
-static void free_w_desc(struct hash_map_alloc_desc *alloc_desc, void *ptr)
+static void free_w_desc(const struct hash_map_alloc_desc *alloc_desc, void *ptr)
 {
 	/* NOTE: Caller functions should have done null checking beforehand. */
 	if (HAS_VALID_ALLOC_CTX(*alloc_desc)) {
 		alloc_desc->dealloc_ctx_cb(alloc_desc->ctx, ptr);
 	} else {
-		buf = alloc_desc->free_cb(ptr);
+		alloc_desc->free_cb(ptr);
 	}
 }
 
-static int compare_unsigned_int(void *lhs, void *rhs, size_t size)
+static int compare_int(const void *lhs, const void *rhs, size_t size)
 {
 	union {
 		int8_t i8;
@@ -79,7 +79,7 @@ static int compare_unsigned_int(void *lhs, void *rhs, size_t size)
 	return cmp;
 }
 
-static int compare_unsigned_int(void *lhs, void *rhs, size_t size)
+static int compare_unsigned_int(const void *lhs, const void *rhs, size_t size)
 {
 	union {
 		uint8_t u8;
@@ -116,7 +116,7 @@ static int compare_unsigned_int(void *lhs, void *rhs, size_t size)
 	return cmp;
 }
 
-static int compare_float(void *lhs, void *rhs, size_t size)
+static int compare_float(const void *lhs, const void *rhs, size_t size)
 {
 	union {
 		float f;
@@ -151,24 +151,24 @@ static int compare_float(void *lhs, void *rhs, size_t size)
 	return (fabsl(diff) < LDBL_EPSILON) ? 0 : ((diff < 0) ? -1 : 1);
 }
 
-static int compare_string(void *lhs, void *rhs, size_t size)
+static int compare_string(const void *lhs, const void *rhs, size_t size)
 {
-	(void) size;
 	return strncmp((const char *) lhs, (const char *) rhs, size);
 }
 
-static int compare_ptr(void *lhs, void *rhs, size_t size)
+static int compare_ptr(const void *lhs, const void *rhs, size_t size)
 {
+	(void) size;
 	return (lhs > rhs) ? 1 : ((lhs < rhs) ? -1 : 0);
 }
 
-static unsigned long long hash(char *key)
+static unsigned long long hash(void *key)
 {
-	unsigned long long  hash;
+	unsigned long long hash;
 
 	hash = FNV_OFFSET;
-	for (char *ch = key; *ch; ch++) {
-		hash ^= (unsigned char)(*ch);
+	for (char *ch = (char *) key; *ch; ch++) {
+		hash ^= (unsigned char) *ch;
 		hash *= FNV_PRIME;
 	}
 	return hash;
@@ -230,7 +230,7 @@ void hash_map_init(struct hash_map *map, enum hash_map_key_type key_type,
 		return;
 	}
 	memset(map, 0, sizeof(struct hash_map));
-	if (trait_desc && trait_desc.compare && trait_desc.hash) {
+	if (trait_desc && trait_desc->compare && trait_desc->hash) {
 		/* NOTE: Research if memcpy() is preferrable. */
 		map->trait_desc = *trait_desc;
 
@@ -284,6 +284,10 @@ void hash_map_init(struct hash_map *map, enum hash_map_key_type key_type,
 		map->alloc_desc.free_cb = free;
 	}
 	map->set = init_map_set(INITIAL_CAPACITY, &map->alloc_desc);
+	if (!map->set) {
+		return;
+	}
+	map->capacity = INITIAL_CAPACITY;
 	map->key_type = key_type;
 }
 
@@ -292,13 +296,13 @@ void hash_map_finish(struct hash_map *map)
 	if (!map) {
 		return;
 	}
-	if (map->set && map->alloc_desc) {
+	if (map->set) {
 		for (size_t i = 0; i < map->capacity; i++) {
 			if (map->set[i].key) {
-				free_w_desc(map->alloc_desc, map->set[i].key);
+				free_w_desc(&map->alloc_desc, map->set[i].key);
 			}
 		}
-		free_w_desc(map->alloc_desc, map->set);
+		free_w_desc(&map->alloc_desc, map->set);
 	}
 }
 
@@ -307,7 +311,8 @@ void hash_map_insert(struct hash_map *map, char *key, void *value)
 	if (!map || !key) {
 		return;
 	}
-	if (!map->set) {
+	if (!map->set || !map->capacity) {
+		return;
 	}
 	if ((float)(map->size) / (float)(map->capacity) >= LOAD_FACTOR) {
 		struct hash_map_entry *new_set;
@@ -325,7 +330,7 @@ void hash_map_insert(struct hash_map *map, char *key, void *value)
 			set_map_entry(new_set, new_cap, map->set[i].key,
 				map->set[i].value, &map->alloc_desc);
 		}
-		free_w_desc(map->alloc_desc, map->set);
+		free_w_desc(&map->alloc_desc, map->set);
 		map->set = new_set;
 		map->capacity = new_cap;
 	}
