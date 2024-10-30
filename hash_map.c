@@ -1,6 +1,7 @@
 #include <float.h>
 #include <math.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "hash_map.h"
@@ -13,6 +14,15 @@
 	((desc).alloc_ctx_cb && (desc).dealloc_ctx_cb && (desc).ctx)
 #define HAS_VALID_MALLOC_AND_FREE(desc) \
 	((desc).malloc_cb && (desc).free_cb)
+#define IS_VALID_ENTRY_DESC(desc) \
+	(((desc).key_type > HASH_MAP_KEY_TYPE_UNDEFINED \
+			&& (desc).key_type < HASH_MAP_KEY_TYPE_NUM_OF) \
+			&& (desc).key_size && (desc).value_size)
+#define IS_VALID_MAP_SET(set) \
+	((set).entries && (set).capacity)
+#define IS_VALID_KEY_TYPE(type) \
+	((type) > HASH_MAP_KEY_TYPE_UNDEFINED \
+			&& (type) < HASH_MAP_KEY_TYPE_NUM_OF)
 
 
 /* TODO: Change cast style from '(type)(variable)' to '(type) variable'. */
@@ -153,6 +163,7 @@ static int compare_float(const void *lhs, const void *rhs, size_t size)
 
 static int compare_string(const void *lhs, const void *rhs, size_t size)
 {
+	printf("%s, %s.\n", (const char *)lhs, (const char *)rhs);
 	return strncmp((const char *) lhs, (const char *) rhs, size);
 }
 
@@ -167,7 +178,8 @@ static unsigned long long hash(void *key)
 	unsigned long long hash;
 
 	hash = FNV_OFFSET;
-	for (char *ch = (char *) key; *ch; ch++) {
+	/* TODO: Implement a range check based on key size param. */
+	for (unsigned char *ch = (unsigned char *) key; *ch; ch++) {
 		hash ^= (unsigned char) *ch;
 		hash *= FNV_PRIME;
 	}
@@ -179,47 +191,49 @@ static unsigned long long calc_index(char *key, unsigned long long capacity)
 	return (unsigned long long) (hash(key) & (capacity - 1));
 }
 
-static struct hash_map_entry *init_map_set(const size_t capacity,
+static struct hash_map_set make_map_set(const size_t capacity,
 	struct hash_map_alloc_desc *alloc_desc)
 {
-	struct hash_map_entry *set = NULL;
+	struct hash_map_set set = {0};
 
-	/* NOTE: Caller functions should have done null checking beforehand. */
-	set = alloc_w_desc(alloc_desc,
+	set.entries = alloc_w_desc(alloc_desc,
 		sizeof(struct hash_map_entry) * capacity);
-	if (set) {
-		memset(set, 0, sizeof(struct hash_map_entry) * capacity);
+	if (set.entries) {
+		memset(set.entries, 0,
+			sizeof(struct hash_map_entry) * capacity);
+		set.capacity = capacity;
 	}
 	return set;
 }
 
-static void set_map_entry(struct hash_map_entry *set, const size_t capacity,
-	char *key, void *value, const struct hash_map_alloc_desc *alloc_desc)
+static void set_map_entry(struct hash_map *map, void *key, size_t key_size,
+	void *value, size_t value_size)
 {
 	unsigned long long index;
-	size_t len;
-	char *str;
 
-	/* NOTE: We expect a valid null-terminated key, which should have been *
-	 * verified by the caller function. */
-	index = calc_index(key, capacity);
-	while (set[index].key != NULL) {
-		if (strcmp(set[index].key, key) == 0) {
-			set[index].value = value;
+	/* NOTE: We expect a valid key, which should have been verified by
+	 * the caller function. */
+	index = calc_index(key, map->set.capacity);
+	while (map->set.entries[index].key != NULL) {
+		if (map->trait_desc.compare(key, map->set.entries[index].key,
+				key_size) == 0) {
+			map->set.entries[index].value = value;
+			map->set.entries[index].value_size = value_size;
 			return;
 		}
 		index++;
-		if (index >= capacity) {
+		if (index >= map->set.capacity) {
 			index = 0;
 		}
 	}
-	len = strlen(key) + 1;
-	str = (char *) alloc_w_desc(alloc_desc, len);
-	if (!str) {
-		return;
-	}
-	set[index].key = memcpy(str, key, len);
-	set[index].value = value;
+	/* NOTE: We basically just assign new address to the value field,
+	 * however, we could assign new value directly to whatever the address
+	 * is pointing to. Consider it. */
+	map->set.entries[index].value = value;
+	map->set.entries[index].value_size = value_size;
+	map->set.entries[index].key = key;
+	map->set.entries[index].key_size = key_size;
+
 }
 
 void hash_map_init(struct hash_map *map, enum hash_map_key_type key_type,
@@ -230,10 +244,16 @@ void hash_map_init(struct hash_map *map, enum hash_map_key_type key_type,
 		return;
 	}
 	memset(map, 0, sizeof(struct hash_map));
-	if (trait_desc && trait_desc->compare && trait_desc->hash) {
+	if (IS_VALID_KEY_TYPE(key_type)) {
+		map->key_type = key_type;
+	} else {
+		return;
+	}
+	if (trait_desc && trait_desc->compare) { /* && trait_desc->hash) { */
 		/* NOTE: Research if memcpy() is preferrable. */
-		map->trait_desc = *trait_desc;
-
+		map->trait_desc.compare = trait_desc->compare;
+		map->trait_desc.hash =
+			trait_desc->hash ? trait_desc->hash : hash;
 	} else {
 		switch (key_type) {
 		case HASH_MAP_KEY_TYPE_CHAR:
@@ -259,18 +279,14 @@ void hash_map_init(struct hash_map *map, enum hash_map_key_type key_type,
 			map->trait_desc.compare = compare_ptr;
 		     break;
 		case HASH_MAP_KEY_TYPE_CUSTOM:
-		     /* fall-through */
+			/* fall-through */
 		case HASH_MAP_KEY_TYPE_UNDEFINED:
-		     /* NOTE: Not necessary. */
-		     /* fall-through */
+			/* fall-through */
 		default:
-		     /* NOTE: We expliclity set it to undefined in case we
-		      * passed in a type we do not recognize or if we specified
-		      * type to be custom but did not provide a trait
-		      * descriptor for it.*/
-		     key_type = HASH_MAP_KEY_TYPE_UNDEFINED;
-		     map->trait_desc.compare = memcmp;
-		     break;
+			/* NOTE: If the key_type is not a supported default type
+			 * and user has not provided a custom compare function
+			 * for their type, we consider the map uninitialized. */
+			return;
 		};
 		map->trait_desc.hash = hash;
 	}
@@ -283,12 +299,7 @@ void hash_map_init(struct hash_map *map, enum hash_map_key_type key_type,
 		map->alloc_desc.malloc_cb = malloc;
 		map->alloc_desc.free_cb = free;
 	}
-	map->set = init_map_set(INITIAL_CAPACITY, &map->alloc_desc);
-	if (!map->set) {
-		return;
-	}
-	map->capacity = INITIAL_CAPACITY;
-	map->key_type = key_type;
+	map->set = make_map_set(INITIAL_CAPACITY, &map->alloc_desc);
 }
 
 void hash_map_finish(struct hash_map *map)
@@ -296,63 +307,61 @@ void hash_map_finish(struct hash_map *map)
 	if (!map) {
 		return;
 	}
-	if (map->set) {
-		for (size_t i = 0; i < map->capacity; i++) {
-			if (map->set[i].key) {
-				free_w_desc(&map->alloc_desc, map->set[i].key);
-			}
-		}
-		free_w_desc(&map->alloc_desc, map->set);
+	if (IS_VALID_MAP_SET(map->set)) {
+		free_w_desc(&map->alloc_desc, map->set.entries);
 	}
 }
 
-void hash_map_insert(struct hash_map *map, char *key, void *value)
+void hash_map_insert(struct hash_map *map, void *key, size_t key_size,
+	void *value, size_t value_size)
 {
-	if (!map || !key) {
-		return;
-	}
-	if (!map->set || !map->capacity) {
-		return;
-	}
-	if ((float)(map->size) / (float)(map->capacity) >= LOAD_FACTOR) {
-		struct hash_map_entry *new_set;
-		size_t new_cap;
 
-		new_cap = (map->capacity) * 2;
-		new_set = init_map_set(new_cap, &map->alloc_desc);
-		if (!new_set) {
+	if (!map || !key || !IS_VALID_MAP_SET(map->set)
+			|| !IS_VALID_KEY_TYPE(map->key_type)) {
+		return;
+	}
+	if ((float) map->set.size / (float) map->set.capacity >= LOAD_FACTOR) {
+		struct hash_map new_map;
+
+		new_map.set = make_map_set(map->set.capacity * 2,
+			&map->alloc_desc);
+		if (!IS_VALID_MAP_SET(new_map.set)) {
 			return;
 		}
-		for (size_t i = 0; i < map->capacity; i++) {
-			if (map->set[i].key == NULL) {
+		for (size_t i = 0; i < map->set.capacity; i++) {
+			if (map->set.entries[i].key == NULL) {
 				continue;
 			}
-			set_map_entry(new_set, new_cap, map->set[i].key,
-				map->set[i].value, &map->alloc_desc);
+			set_map_entry(&new_map, map->set.entries[i].key,
+				map->set.entries[i].key_size,
+				map->set.entries[i].value,
+				map->set.entries[i].value_size);
 		}
-		free_w_desc(&map->alloc_desc, map->set);
-		map->set = new_set;
-		map->capacity = new_cap;
+		free_w_desc(&map->alloc_desc, map->set.entries);
+		new_map.set.size = map->set.size;
+		map->set = new_map.set;
 	}
-	set_map_entry(map->set, map->capacity, key, value, &map->alloc_desc);
-	map->size++;
+	set_map_entry(map, key, key_size, value, value_size);
+	map->set.size++;
 }
 
-int hash_map_at(const struct hash_map *map, char *key, void **value)
+int hash_map_at(const struct hash_map *map, void *key, void **value)
 {
 	unsigned long long index;
 
-	if (!map || !map->set) {
+	if (!map || !IS_VALID_MAP_SET(map->set)) {
 		return 0;
 	}
-	index = calc_index(key, map->capacity);
-	while (map->set[index].key != NULL) {
-		if (strcmp(key, map->set[index].key) == 0) {
-			(*value) = map->set[index].value;
+	index = calc_index(key, map->set.capacity);
+	while (map->set.entries[index].key != NULL) {
+		if (map->trait_desc.compare(key, map->set.entries[index].key,
+					map->set.entries[index].key_size)
+					== 0) {
+			(*value) = map->set.entries[index].value;
 			return 1;
 		}
 		index++;
-		if (index >= map->capacity) {
+		if (index >= map->set.capacity) {
 			index = 0;
 		}
 	}
@@ -361,12 +370,12 @@ int hash_map_at(const struct hash_map *map, char *key, void **value)
 
 size_t hash_map_size(const struct hash_map *map)
 {
-	return map ? map->size : 0;
+	return map ? map->set.size : 0;
 }
 
 size_t hash_map_capacity(const struct hash_map *map)
 {
-	return map ? map->capacity : 0;
+	return map ? map->set.capacity : 0;
 }
 
 void hash_map_iter_init(struct hash_map_iter *iter, struct hash_map *map)
@@ -390,14 +399,14 @@ void hash_map_iter_finish(struct hash_map_iter *iter)
 int hash_map_iter_next(struct hash_map_iter *iter, char **key, void **value)
 {
 	/* NOTE: This function should NOT be used explicitly, it is intended as
-	 * an internal function for macros. */
+	 * an internal function for helper macros. */
 	if (!iter || !key || !value) {
 		return 0;
 	}
-	while (iter->index < iter->map->capacity) {
-		if (iter->map->set[iter->index].key != NULL) {
-			*key = iter->map->set[iter->index].key;
-			*value = iter->map->set[iter->index].value;
+	while (iter->index < iter->map->set.capacity) {
+		if (iter->map->set.entries[iter->index].key != NULL) {
+			*key = iter->map->set.entries[iter->index].key;
+			*value = iter->map->set.entries[iter->index].value;
 			iter->index++;
 			return 1;
 		}
