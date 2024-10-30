@@ -9,11 +9,12 @@
 #define HASH_MAP_INIT(map, key_type) \
 	hash_map_init(map, key_type, NULL, NULL)
 #define HASH_MAP_INSERT(map, key, key_size, value, value_size) \
-	hash_map_insert(map, (void *) key, key_size, (void *) value, value_size)
+	hash_map_insert(map, (const void *) key, key_size, \
+		(const void *) value, value_size)
 #define HASH_MAP_AT(map, key, key_size, value) \
-	hash_map_at(map, key, key_size, (void *) &(value))
+	hash_map_at(map, key, key_size, (const void *) &(value))
 #define HASH_MAP_ITER_FOR_EACH(iter, key, value) \
-	for (; hash_map_iter_next(iter, &(key), (void **) &(value)); )
+	for (; hash_map_iter_next(iter, (void *) &(key), (const void **) &(value)); )
 
 enum hash_map_key_type {
 	HASH_MAP_KEY_TYPE_UNDEFINED,
@@ -31,7 +32,7 @@ enum hash_map_key_type {
 
 struct hash_map_trait_desc {
 	int (*compare)(const void *, const void *, size_t);
-	uint64_t (*hash)(void *, size_t);
+	uint64_t (*hash)(const void *, size_t);
 };
 
 struct hash_map_alloc_desc {
@@ -43,8 +44,8 @@ struct hash_map_alloc_desc {
 };
 
 struct hash_map_entry {
-	void *key;
-	void *value;
+	const void *key;
+	const void *value;
 	size_t key_size;
 	size_t value_size;
 };
@@ -71,14 +72,15 @@ void hash_map_init(struct hash_map *map, enum hash_map_key_type key_type,
 	struct hash_map_trait_desc *trait_desc,
 	struct hash_map_alloc_desc *alloc_desc);
 void hash_map_finish(struct hash_map *map);
-void hash_map_insert(struct hash_map *map, void *key, size_t key_size,
-	void *value, size_t value_size);
-int hash_map_at(const struct hash_map *map, void *key, size_t key_size,
-	void **value);
+void hash_map_insert(struct hash_map *map, const void *key, size_t key_size,
+	const void *value, size_t value_size);
+int hash_map_at(const struct hash_map *map, const void *key, size_t key_size,
+	const void **value);
 size_t hash_map_size(const struct hash_map *map);
 size_t hash_map_capacity(const struct hash_map *map);
 void hash_map_iter_init(struct hash_map_iter *iter, struct hash_map *map);
 void hash_map_iter_finish(struct hash_map_iter *iter);
-int hash_map_iter_next(struct hash_map_iter *iter, char **key, void **value);
+int hash_map_iter_next(struct hash_map_iter *iter, const void **key,
+	const void **value);
 
 #endif

@@ -166,7 +166,7 @@ static int compare_ptr(const void *lhs, const void *rhs, size_t size)
 	return (lhs > rhs) ? 1 : ((lhs < rhs) ? -1 : 0);
 }
 
-static uint64_t hash(void *key, size_t key_size)
+static uint64_t hash(const void *key, size_t key_size)
 {
 	uint64_t hash = FNV_OFFSET;
 	const unsigned char *data = key;
@@ -178,7 +178,7 @@ static uint64_t hash(void *key, size_t key_size)
 	return hash;
 }
 
-static uint64_t calc_index(char *key, size_t key_size, uint64_t capacity)
+static uint64_t calc_index(const void *key, size_t key_size, uint64_t capacity)
 {
 	return (uint64_t) (hash(key, key_size) & (capacity - 1));
 }
@@ -198,8 +198,8 @@ static struct hash_map_set make_map_set(const size_t capacity,
 	return set;
 }
 
-static void set_map_entry(struct hash_map *map, void *key, size_t key_size,
-	void *value, size_t value_size)
+static void set_map_entry(struct hash_map *map, const void *key,
+	size_t key_size, const void *value, size_t value_size)
 {
 	uint64_t index;
 
@@ -304,8 +304,8 @@ void hash_map_finish(struct hash_map *map)
 	}
 }
 
-void hash_map_insert(struct hash_map *map, void *key, size_t key_size,
-	void *value, size_t value_size)
+void hash_map_insert(struct hash_map *map, const void *key, size_t key_size,
+	const void *value, size_t value_size)
 {
 
 	if (!map || !key || !IS_VALID_MAP_SET(map->set)
@@ -337,8 +337,8 @@ void hash_map_insert(struct hash_map *map, void *key, size_t key_size,
 	map->set.size++;
 }
 
-int hash_map_at(const struct hash_map *map, void *key, size_t key_size,
-	void **value)
+int hash_map_at(const struct hash_map *map, const void *key, size_t key_size,
+	const void **value)
 {
 	uint64_t index;
 
@@ -389,7 +389,8 @@ void hash_map_iter_finish(struct hash_map_iter *iter)
 	}
 }
 
-int hash_map_iter_next(struct hash_map_iter *iter, char **key, void **value)
+int hash_map_iter_next(struct hash_map_iter *iter, const void **key,
+	const void **value)
 {
 	/* NOTE: This function should NOT be used explicitly, it is intended as
 	 * an internal function for helper macros. */
