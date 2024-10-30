@@ -2,14 +2,18 @@
 #define HASH_MAP_H
 
 #include <stddef.h>
+#include <stdint.h>
+#include <string.h>
 
 /* NOTE: Address-of operators in macros might lead to unexpected behaviour. */
-#define HASH_MAP_AT(map, key, value) \
-	hash_map_at(map, key, (void *)&(value))
-#define HASH_MAP_ITER_FOR_EACH(iter, key, value) \
-	for (; hash_map_iter_next(iter, &(key), (void **)&(value)); )
+#define HASH_MAP_INIT(map, key_type) \
+	hash_map_init(map, key_type, NULL, NULL)
 #define HASH_MAP_INSERT(map, key, key_size, value, value_size) \
 	hash_map_insert(map, (void *) key, key_size, (void *) value, value_size)
+#define HASH_MAP_AT(map, key, key_size, value) \
+	hash_map_at(map, key, key_size, (void *) &(value))
+#define HASH_MAP_ITER_FOR_EACH(iter, key, value) \
+	for (; hash_map_iter_next(iter, &(key), (void **) &(value)); )
 
 enum hash_map_key_type {
 	HASH_MAP_KEY_TYPE_UNDEFINED,
@@ -27,7 +31,7 @@ enum hash_map_key_type {
 
 struct hash_map_trait_desc {
 	int (*compare)(const void *, const void *, size_t);
-	unsigned long long (*hash)(void *);
+	uint64_t (*hash)(void *, size_t);
 };
 
 struct hash_map_alloc_desc {
@@ -69,7 +73,8 @@ void hash_map_init(struct hash_map *map, enum hash_map_key_type key_type,
 void hash_map_finish(struct hash_map *map);
 void hash_map_insert(struct hash_map *map, void *key, size_t key_size,
 	void *value, size_t value_size);
-int hash_map_at(const struct hash_map *map, void *key, void **value);
+int hash_map_at(const struct hash_map *map, void *key, size_t key_size,
+	void **value);
 size_t hash_map_size(const struct hash_map *map);
 size_t hash_map_capacity(const struct hash_map *map);
 void hash_map_iter_init(struct hash_map_iter *iter, struct hash_map *map);

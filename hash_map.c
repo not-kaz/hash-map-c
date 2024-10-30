@@ -1,6 +1,5 @@
 #include <float.h>
 #include <math.h>
-#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include "hash_map.h"
@@ -167,22 +166,21 @@ static int compare_ptr(const void *lhs, const void *rhs, size_t size)
 	return (lhs > rhs) ? 1 : ((lhs < rhs) ? -1 : 0);
 }
 
-static uint64_t hash(void *key)
+static uint64_t hash(void *key, size_t key_size)
 {
-	uint64_t hash;
+	uint64_t hash = FNV_OFFSET;
+	const unsigned char *data = key;
 
-	hash = FNV_OFFSET;
-	/* TODO: Implement a range check based on key size param. */
-	for (unsigned char *ch = (unsigned char *) key; *ch; ch++) {
-		hash ^= (unsigned char) *ch;
+	for (size_t i = 0; i < key_size; i++) {
+		hash ^= data[i];
 		hash *= FNV_PRIME;
 	}
 	return hash;
 }
 
-static uint64_t calc_index(char *key, unsigned long long capacity)
+static uint64_t calc_index(char *key, size_t key_size, uint64_t capacity)
 {
-	return (uint64_t) (hash(key) & (capacity - 1));
+	return (uint64_t) (hash(key, key_size) & (capacity - 1));
 }
 
 static struct hash_map_set make_map_set(const size_t capacity,
@@ -207,7 +205,7 @@ static void set_map_entry(struct hash_map *map, void *key, size_t key_size,
 
 	/* NOTE: We expect a valid key, which should have been verified by
 	 * the caller function. */
-	index = calc_index(key, map->set.capacity);
+	index = calc_index(key, key_size, map->set.capacity);
 	while (map->set.entries[index].key != NULL) {
 		if (map->trait_desc.compare(key, map->set.entries[index].key,
 				key_size) == 0) {
@@ -339,14 +337,15 @@ void hash_map_insert(struct hash_map *map, void *key, size_t key_size,
 	map->set.size++;
 }
 
-int hash_map_at(const struct hash_map *map, void *key, void **value)
+int hash_map_at(const struct hash_map *map, void *key, size_t key_size,
+	void **value)
 {
 	uint64_t index;
 
 	if (!map || !IS_VALID_MAP_SET(map->set)) {
 		return 0;
 	}
-	index = calc_index(key, map->set.capacity);
+	index = calc_index(key, key_size, map->set.capacity);
 	while (map->set.entries[index].key != NULL) {
 		if (map->trait_desc.compare(key, map->set.entries[index].key,
 					map->set.entries[index].key_size)
