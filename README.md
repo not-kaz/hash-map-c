@@ -1,10 +1,10 @@
 # hash_map_c
-Naive and portable implementation of a hash map written in ANSI C99, using the FNV1a hash function.</br>
+Naive and portable implementation of a hash map (view) written in C99, using the FNV1a hash function.</br>
 Made as an exercise and for personal use in hobby projects.
 
-This implementation only holds pointers to provided key and value pairs; it is the user's responsibility to maintain the data.</br>
+This implementation only holds pointers to key and value pairs; no copying occurs, therefore it is the user's responsibility to maintain the data.</br>
 Collisions are handled with linear probing, for the sake of simplicity and locality(?).</br>
-No removal implemented, yet to be decided if it's necessary.
+No removal implemented, to be considered.</br>
 
 *Opaque macro version for ease-of-use*
 ```c
