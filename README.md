@@ -6,35 +6,55 @@ This implementation only holds pointers to provided key and value pairs; it is t
 Collisions are handled with linear probing, for the sake of simplicity and locality(?).</br>
 No removal implemented, yet to be decided if it's necessary.
 
+*Opaque macro version for ease-of-use*
 ```c
+#include <stdio.h>
+#include <string.h>
 #include "hash_map.h"
 
 int main(void)
 {
-	/* Hash map structs */
 	struct hash_map map;
 	struct hash_map_iter iter;
-	/* Data variables */
-	int passcode;
-	int age;
-	/* Pointers for data access */
+	/* Data */
+	const char *strings[] = {"alpha", "beta", "gamma", "epsilon", "delta"};
+	int nums[] = {83, 2, 3, 4, 5};
+	/* Data accessors */
 	char *key;
-	int *value;
+	void *val;
 
-	passcode = 2928;
-	age = 76;
-	/* If we do not provide an allocator descriptor, the map will use the standard library. */
-	hash_map_init(&map, NULL);
+	HASH_MAP_INIT(&map, HASH_MAP_KEY_TYPE_STRING);
+	HASH_MAP_INSERT(&map, strings[0], strlen(strings[0]) + 1, &nums[0],
+		sizeof(nums[0]));
+	HASH_MAP_INSERT(&map, strings[0], strlen(strings[0]) + 1, &nums[0],
+		sizeof(nums[0]));
+	HASH_MAP_INSERT(&map, strings[1], strlen(strings[1]) + 1, &nums[1],
+		sizeof(nums[1]));
+	HASH_MAP_INSERT(&map, strings[2], strlen(strings[2]) + 1, &nums[2],
+		sizeof(nums[2]));
+	HASH_MAP_INSERT(&map, strings[3], strlen(strings[3]) + 1, &nums[3],
+		sizeof(nums[3]));
+	HASH_MAP_INSERT(&map, strings[4], strlen(strings[4]) + 1, &nums[4],
+		sizeof(nums[4]));
 	hash_map_iter_init(&iter, &map);
-	hash_map_insert(&map, "passcode", &passcode);
-	hash_map_insert(&map, "age", &age);
-	HASH_MAP_ITER_FOR_EACH(&iter, key, value) {
-		printf("%s : %d\n", key, (*value));
+	HASH_MAP_ITER_FOR_EACH(&iter, key, val) {
+		printf("%s : %d\n", key, *(int *)val);
 	}
-	HASH_MAP_AT(&map, "passcode", value);
 	hash_map_iter_finish(&iter);
 	hash_map_finish(&map);
 	return 0;
 }
 ```
-TODO: Actually store value data into the hash_map, not just pointers to the data.
+
+*Explicit function version*
+```c
+#include <stdio.h>
+#include <string.h>
+#include "hash_map.h"
+
+int main(void)
+{
+	/* TODO */
+}
+```
+
