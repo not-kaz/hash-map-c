@@ -1,7 +1,6 @@
 #include <float.h>
 #include <math.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "hash_map.h"
@@ -14,10 +13,6 @@
 	((desc).alloc_ctx_cb && (desc).dealloc_ctx_cb && (desc).ctx)
 #define HAS_VALID_MALLOC_AND_FREE(desc) \
 	((desc).malloc_cb && (desc).free_cb)
-#define IS_VALID_ENTRY_DESC(desc) \
-	(((desc).key_type > HASH_MAP_KEY_TYPE_UNDEFINED \
-			&& (desc).key_type < HASH_MAP_KEY_TYPE_NUM_OF) \
-			&& (desc).key_size && (desc).value_size)
 #define IS_VALID_MAP_SET(set) \
 	((set).entries && (set).capacity)
 #define IS_VALID_KEY_TYPE(type) \
@@ -163,7 +158,6 @@ static int compare_float(const void *lhs, const void *rhs, size_t size)
 
 static int compare_string(const void *lhs, const void *rhs, size_t size)
 {
-	printf("%s, %s.\n", (const char *)lhs, (const char *)rhs);
 	return strncmp((const char *) lhs, (const char *) rhs, size);
 }
 
