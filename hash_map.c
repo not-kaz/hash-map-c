@@ -167,9 +167,9 @@ static int compare_ptr(const void *lhs, const void *rhs, size_t size)
 	return (lhs > rhs) ? 1 : ((lhs < rhs) ? -1 : 0);
 }
 
-static unsigned long long hash(void *key)
+static uint64_t hash(void *key)
 {
-	unsigned long long hash;
+	uint64_t hash;
 
 	hash = FNV_OFFSET;
 	/* TODO: Implement a range check based on key size param. */
@@ -180,9 +180,9 @@ static unsigned long long hash(void *key)
 	return hash;
 }
 
-static unsigned long long calc_index(char *key, unsigned long long capacity)
+static uint64_t calc_index(char *key, unsigned long long capacity)
 {
-	return (unsigned long long) (hash(key) & (capacity - 1));
+	return (uint64_t) (hash(key) & (capacity - 1));
 }
 
 static struct hash_map_set make_map_set(const size_t capacity,
@@ -203,7 +203,7 @@ static struct hash_map_set make_map_set(const size_t capacity,
 static void set_map_entry(struct hash_map *map, void *key, size_t key_size,
 	void *value, size_t value_size)
 {
-	unsigned long long index;
+	uint64_t index;
 
 	/* NOTE: We expect a valid key, which should have been verified by
 	 * the caller function. */
@@ -341,7 +341,7 @@ void hash_map_insert(struct hash_map *map, void *key, size_t key_size,
 
 int hash_map_at(const struct hash_map *map, void *key, void **value)
 {
-	unsigned long long index;
+	uint64_t index;
 
 	if (!map || !IS_VALID_MAP_SET(map->set)) {
 		return 0;
@@ -397,6 +397,7 @@ int hash_map_iter_next(struct hash_map_iter *iter, char **key, void **value)
 	if (!iter || !key || !value) {
 		return 0;
 	}
+	/* TODO: Implement iterator invalidation, tracking 'seen' elements. */
 	while (iter->index < iter->map->set.capacity) {
 		if (iter->map->set.entries[iter->index].key != NULL) {
 			*key = iter->map->set.entries[iter->index].key;
