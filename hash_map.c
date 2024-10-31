@@ -18,9 +18,6 @@
 	((type) > HASH_MAP_KEY_TYPE_UNDEFINED \
 			&& (type) < HASH_MAP_KEY_TYPE_NUM_OF)
 
-
-/* TODO: Change cast style from '(type)(variable)' to '(type) variable'. */
-
 static void *alloc_w_desc(const struct hash_map_alloc_desc *alloc_desc,
 	size_t size)
 {
@@ -54,33 +51,30 @@ static int compare_int(const void *lhs, const void *rhs, size_t size)
 		int32_t i32;
 		int64_t i64;
 	} tmp_lhs, tmp_rhs;
-	int cmp;
 
 	switch (size) {
 	case sizeof(int8_t):
 		memcpy(&tmp_lhs.i8, lhs, sizeof(int8_t));
 		memcpy(&tmp_rhs.i8, rhs, sizeof(int8_t));
-		cmp = (tmp_lhs.i8 > tmp_rhs.i8) - (tmp_lhs.i8 < tmp_rhs.i8);
-		break;
+		return ((tmp_lhs.i8 > tmp_rhs.i8) - (tmp_lhs.i8 < tmp_rhs.i8));
 	case sizeof(int16_t):
 		memcpy(&tmp_lhs.i16, lhs, sizeof(int16_t));
 		memcpy(&tmp_rhs.i16, rhs, sizeof(int16_t));
-		cmp = (tmp_lhs.i16 > tmp_rhs.i16) - (tmp_lhs.i16 < tmp_rhs.i16);
-		break;
+		return ((tmp_lhs.i16 > tmp_rhs.i16)
+			- (tmp_lhs.i16 < tmp_rhs.i16));
 	case sizeof(int32_t):
 		memcpy(&tmp_lhs.i32, lhs, sizeof(int32_t));
 		memcpy(&tmp_rhs.i32, rhs, sizeof(int32_t));
-		cmp = (tmp_lhs.i32 > tmp_rhs.i32) - (tmp_lhs.i32 < tmp_rhs.i32);
-		break;
+		return ((tmp_lhs.i32 > tmp_rhs.i32)
+			- (tmp_lhs.i32 < tmp_rhs.i32));
 	case sizeof(int64_t):
 		memcpy(&tmp_lhs.i64, lhs, sizeof(int64_t));
 		memcpy(&tmp_rhs.i64, rhs, sizeof(int64_t));
-		cmp = (tmp_lhs.i64 > tmp_rhs.i64) - (tmp_lhs.i64 < tmp_rhs.i64);
-		break;
+		return ((tmp_lhs.i64 > tmp_rhs.i64)
+			- (tmp_lhs.i64 < tmp_rhs.i64));
 	default:
-		cmp = 0;
+		return 0;
 	}
-	return cmp;
 }
 
 static int compare_unsigned_int(const void *lhs, const void *rhs, size_t size)
@@ -91,33 +85,31 @@ static int compare_unsigned_int(const void *lhs, const void *rhs, size_t size)
 		uint32_t u32;
 		uint64_t u64;
 	} tmp_lhs, tmp_rhs;
-	int cmp;
 
 	switch (size) {
 	case sizeof(uint8_t):
 		memcpy(&tmp_lhs.u8, lhs, sizeof(uint8_t));
 		memcpy(&tmp_rhs.u8, rhs, sizeof(uint8_t));
-		cmp = (tmp_lhs.u8 > tmp_rhs.u8) - (tmp_lhs.u8 < tmp_rhs.u8);
-		break;
+		return ((tmp_lhs.u8 > tmp_rhs.u8) - (tmp_lhs.u8 < tmp_rhs.u8));
 	case sizeof(uint16_t):
 		memcpy(&tmp_lhs.u16, lhs, sizeof(uint16_t));
 		memcpy(&tmp_rhs.u16, rhs, sizeof(uint16_t));
-		cmp = (tmp_lhs.u16 > tmp_rhs.u16) - (tmp_lhs.u16 < tmp_rhs.u16);
-		break;
+		return ((tmp_lhs.u16 > tmp_rhs.u16)
+			- (tmp_lhs.u16 < tmp_rhs.u16));
 	case sizeof(uint32_t):
 		memcpy(&tmp_lhs.u32, lhs, sizeof(uint32_t));
 		memcpy(&tmp_rhs.u32, rhs, sizeof(uint32_t));
-		cmp = (tmp_lhs.u32 > tmp_rhs.u32) - (tmp_lhs.u32 < tmp_rhs.u32);
-		break;
+		return ((tmp_lhs.u32 > tmp_rhs.u32)
+			- (tmp_lhs.u32 < tmp_rhs.u32));
 	case sizeof(uint64_t):
 		memcpy(&tmp_lhs.u64, lhs, sizeof(uint64_t));
 		memcpy(&tmp_rhs.u64, rhs, sizeof(uint64_t));
-		cmp = (tmp_lhs.u64 > tmp_rhs.u64) - (tmp_lhs.u64 < tmp_rhs.u64);
+		return ((tmp_lhs.u64 > tmp_rhs.u64)
+			- (tmp_lhs.u64 < tmp_rhs.u64));
 		break;
 	default:
-		cmp = 0;
+		return 0;
 	}
-	return cmp;
 }
 
 static int compare_float(const void *lhs, const void *rhs, size_t size)
@@ -134,9 +126,6 @@ static int compare_float(const void *lhs, const void *rhs, size_t size)
 	} diff;
 
 	/* TODO: Use isnan() for values. */
-	/* TODO: Check if comparing LDBL_EPSILON with diff is still valid,
-	 * even after casting up from float and double. Do we need FLT_EPSILON
-	 * etc., for each specific type? */
 	switch (size) {
 	case sizeof(float):
 		memcpy(&tmp_lhs.f, lhs, sizeof(float));
