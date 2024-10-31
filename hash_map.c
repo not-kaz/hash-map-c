@@ -308,7 +308,7 @@ void hash_map_insert(struct hash_map *map, const void *key, size_t key_size,
 	const void *value, size_t value_size)
 {
 
-	if (!map || !key || !IS_VALID_MAP_SET(map->set)
+	if (!map || !key || !value || !IS_VALID_MAP_SET(map->set)
 			|| !IS_VALID_KEY_TYPE(map->key_type)) {
 		return;
 	}
@@ -342,7 +342,7 @@ int hash_map_at(const struct hash_map *map, const void *key, size_t key_size,
 {
 	uint64_t index;
 
-	if (!map || !IS_VALID_MAP_SET(map->set)) {
+	if (!map || !IS_VALID_MAP_SET(map->set) || !key || !value) {
 		return 0;
 	}
 	index = calc_index(key, key_size, map->set.capacity);
@@ -394,7 +394,8 @@ int hash_map_iter_next(struct hash_map_iter *iter, const void **key,
 {
 	/* NOTE: This function should NOT be used explicitly, it is intended as
 	 * an internal function for helper macros. */
-	if (!iter || !key || !value) {
+	if (!iter || !iter->map || !IS_VALID_MAP_SET(iter->map->set)
+			|| !key || !value) {
 		return 0;
 	}
 	/* TODO: Implement iterator invalidation, tracking 'seen' elements. */
