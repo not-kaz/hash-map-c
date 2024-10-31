@@ -127,7 +127,11 @@ static int compare_float(const void *lhs, const void *rhs, size_t size)
 		double d;
 		long double ld;
 	} tmp_lhs, tmp_rhs;
-	long double diff;
+	union {
+		float f;
+		double d;
+		long double ld;
+	} diff;
 
 	/* TODO: Use isnan() for values. */
 	/* TODO: Check if comparing LDBL_EPSILON with diff is still valid,
@@ -137,22 +141,24 @@ static int compare_float(const void *lhs, const void *rhs, size_t size)
 	case sizeof(float):
 		memcpy(&tmp_lhs.f, lhs, sizeof(float));
 		memcpy(&tmp_rhs.f, rhs, sizeof(float));
-		diff =  (long double) (tmp_lhs.f - tmp_rhs.f);
-		break;
+		diff.f = tmp_lhs.f - tmp_rhs.f;
+		return (fabsf(diff.f) < FLT_EPSILON)
+			? 0 : ((diff.f < 0) ? -1 : 1);
 	case sizeof(double):
 		memcpy(&tmp_lhs.d, lhs, sizeof(double));
 		memcpy(&tmp_rhs.d, rhs, sizeof(double));
-		diff =  (long double) (tmp_lhs.d - tmp_rhs.d);
-		break;
+		diff.d = tmp_lhs.d - tmp_rhs.d;
+		return (fabs(diff.d) < DBL_EPSILON)
+			? 0 : ((diff.d < 0) ? -1 : 1);
 	case sizeof(long double):
 		memcpy(&tmp_lhs.ld, lhs, sizeof(long double));
 		memcpy(&tmp_rhs.ld, rhs, sizeof(long double));
-		diff =  (long double) (tmp_lhs.ld - tmp_rhs.ld);
-		break;
+		diff.ld = tmp_lhs.ld - tmp_rhs.ld;
+		return (fabsl(diff.ld) < LDBL_EPSILON)
+			? 0 : ((diff.ld < 0) ? -1 : 1);
 	default:
-		diff = 0;
+		return 0;
 	}
-	return (fabsl(diff) < LDBL_EPSILON) ? 0 : ((diff < 0) ? -1 : 1);
 }
 
 static int compare_string(const void *lhs, const void *rhs, size_t size)
