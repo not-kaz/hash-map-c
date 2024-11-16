@@ -18,8 +18,8 @@
 	((type) > HASH_MAP_KEY_TYPE_UNDEFINED \
 			&& (type) < HASH_MAP_KEY_TYPE_NUM_OF)
 
-static void *alloc_w_desc(const struct hash_map_alloc_desc *alloc_desc,
-	size_t size)
+static void *
+alloc_w_desc(const struct hash_map_alloc_desc *alloc_desc, size_t size)
 {
 	void *buf =  NULL;
 
@@ -33,7 +33,8 @@ static void *alloc_w_desc(const struct hash_map_alloc_desc *alloc_desc,
 	return buf;
 }
 
-static void free_w_desc(const struct hash_map_alloc_desc *alloc_desc, void *ptr)
+static void
+free_w_desc(const struct hash_map_alloc_desc *alloc_desc, void *ptr)
 {
 	/* NOTE: Caller functions should have done null checking beforehand. */
 	if (HAS_VALID_ALLOC_CTX(*alloc_desc)) {
@@ -43,7 +44,8 @@ static void free_w_desc(const struct hash_map_alloc_desc *alloc_desc, void *ptr)
 	}
 }
 
-static int compare_int(const void *lhs, const void *rhs, size_t size)
+static int
+compare_int(const void *lhs, const void *rhs, size_t size)
 {
 	union {
 		int8_t i8;
@@ -77,7 +79,8 @@ static int compare_int(const void *lhs, const void *rhs, size_t size)
 	}
 }
 
-static int compare_unsigned_int(const void *lhs, const void *rhs, size_t size)
+static int
+compare_unsigned_int(const void *lhs, const void *rhs, size_t size)
 {
 	union {
 		uint8_t u8;
@@ -112,7 +115,8 @@ static int compare_unsigned_int(const void *lhs, const void *rhs, size_t size)
 	}
 }
 
-static int compare_float(const void *lhs, const void *rhs, size_t size)
+static int
+compare_float(const void *lhs, const void *rhs, size_t size)
 {
 	union {
 		float f;
@@ -150,18 +154,21 @@ static int compare_float(const void *lhs, const void *rhs, size_t size)
 	}
 }
 
-static int compare_string(const void *lhs, const void *rhs, size_t size)
+static int
+compare_string(const void *lhs, const void *rhs, size_t size)
 {
 	return strncmp((const char *) lhs, (const char *) rhs, size);
 }
 
-static int compare_ptr(const void *lhs, const void *rhs, size_t size)
+static int
+compare_ptr(const void *lhs, const void *rhs, size_t size)
 {
 	(void) size;
 	return (lhs > rhs) ? 1 : ((lhs < rhs) ? -1 : 0);
 }
 
-static uint64_t hash(const void *key, size_t key_size)
+static uint64_t
+hash(const void *key, size_t key_size)
 {
 	uint64_t hash = FNV_OFFSET;
 	const unsigned char *data = key;
@@ -173,13 +180,14 @@ static uint64_t hash(const void *key, size_t key_size)
 	return hash;
 }
 
-static uint64_t calc_index(const void *key, size_t key_size, uint64_t capacity)
+static uint64_t
+calc_index(const void *key, size_t key_size, uint64_t capacity)
 {
 	return (uint64_t) (hash(key, key_size) & (capacity - 1));
 }
 
-static struct hash_map_set make_map_set(const size_t capacity,
-	struct hash_map_alloc_desc *alloc_desc)
+static struct hash_map_set
+make_map_set(const size_t capacity, struct hash_map_alloc_desc *alloc_desc)
 {
 	struct hash_map_set set = {0};
 
@@ -193,8 +201,9 @@ static struct hash_map_set make_map_set(const size_t capacity,
 	return set;
 }
 
-static void set_map_entry(struct hash_map *map, const void *key,
-	size_t key_size, const void *value, size_t value_size)
+static void
+set_map_entry(struct hash_map *map, const void *key, size_t key_size,
+	const void *value, size_t value_size)
 {
 	uint64_t index;
 
